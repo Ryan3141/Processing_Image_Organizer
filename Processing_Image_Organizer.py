@@ -1,10 +1,14 @@
+if __name__ == "__main__": # This allows running this module by running this script
+	import sys
+	sys.path.insert(0, "..")
 
 import os
 import sys
 from PyQt5 import uic, QtWidgets
-from PyQt5.QtWidgets import QWidget, QAbstractScrollArea
+from PyQt5.QtWidgets import QWidget, QAbstractScrollArea, QHBoxLayout, QVBoxLayout, QLineEdit, QLabel, QFrame
 from PyQt5 import QtCore
 
+from Processing_Image_Organizer.Install_If_Necessary import Ask_For_Install
 try:
 	import mysql.connector
 except:
@@ -15,11 +19,14 @@ import sqlite3
 
 import datetime
 import configparser
-from File_Loader import File_Loader
+from Processing_Image_Organizer.File_Loader import File_Loader
 
+__version__ = '1.00'
 
-def resource_path( relative_path ):
-	return "./" + relative_path
+base_path = os.path.dirname( os.path.realpath(__file__) )
+def resource_path(relative_path):  # Define function to import external files when using PyInstaller.
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    return os.path.join(base_path, relative_path)
 
 Ui_MainWindow, QtBaseClass = uic.loadUiType( resource_path("Processing_Image_Organizer_GUI.ui") )
 
@@ -77,9 +84,9 @@ def Commit_To_SQL( sql_type, sql_conn, **commit_things ):
 	sql_conn.commit()
 
 
-class IV_Measurement_Assistant_App(QWidget, Ui_MainWindow):
+class Processing_Image_Organizer_GUI(QWidget, Ui_MainWindow):
 	measurementRequested_signal = QtCore.pyqtSignal(float, float, float)
-	Async_Grab_File = QtCore.pyqtSignal(str, str)
+	Async_Grab_File = QtCore.pyqtSignal(str, str, bool)
 
 	def __init__(self, parent=None, root_window=None):
 		QWidget.__init__(self, parent)
@@ -89,7 +96,6 @@ class IV_Measurement_Assistant_App(QWidget, Ui_MainWindow):
 		self.Init_Subsystems()
 
 		self.Connect_Functions()
-
 
 		self.ftp_server_thread.start()
 
@@ -103,22 +109,33 @@ class IV_Measurement_Assistant_App(QWidget, Ui_MainWindow):
 		self.ftp_server_thread.started.connect( self.ftp_server.Connect )
 
 		self.Initialize_Tree_Table()
+		self.Initialize_Info_Frame( self.header_titles.keys() )
 		
 
 	def Connect_Functions( self ):
-		self.refreshConnection_toolButton.clicked.connect( self.Grab_Image )
+		self.refreshConnection_toolButton.clicked.connect( self.Initialize_Tree_Table )
 
 		self.treeWidget.itemDoubleClicked.connect( self.Grab_Image )
+		self.treeWidget.header().sectionMoved.connect( self.Tree_Columns_Order_Changed )
 		self.ftp_server.imageReady_signal.connect( self.graphicsView.setImage )
 		self.Async_Grab_File.connect( self.ftp_server.GetImageFile )
-		pass
+		
+		#self.updateData_pushButton.clicked.connect( self.Update_SQL_Data )
 
 	def Grab_Image( self, tree_item, column ):
 		selected = self.Get_Bottom_Children_Elements_Under( tree_item )
+
 		file_location = selected[0].text(selected[0].columnCount() - 1)
 		file_name = os.path.basename( file_location )
 		folder = os.path.dirname( file_location )
-		self.Async_Grab_File.emit( folder, file_name )
+		self.Async_Grab_File.emit( folder, file_name, True )
+
+		correct_row = []
+		for row in self.row_data:
+			if row[selected[0].columnCount() - 1] == file_location:
+				correct_row = row
+
+		self.Fill_In_Info_Frame( correct_row )
 		#file_name = "477K Pads (1).jpg"
 		#folder = '/Microscope_Computer/Microscope Images/Ryan/Gold Pads'
 		#self.ftp_server.GetFile( folder, file_name )
@@ -126,46 +143,91 @@ class IV_Measurement_Assistant_App(QWidget, Ui_MainWindow):
 		#self.graphicsView.setImage( imread(file_name) )
 		#materialSelection_lineEdit
 
-	def Initialize_Images_Info( self ):
-		data_headers = [ "time", "sample_name", "processing_step", "image_location", "microscope_location", "user", "path_to_file", "processing_step_part", "processing_step_attempt" ]
+	def Fill_In_Info_Frame( self, selected_data ):
+		for box, data in zip( self.info_boxes, selected_data ):
+			box[1].setText( str(data) )
 
+	def Initialize_Info_Frame( self, header_titles ):
+		#self.info_frame
+		self.info_boxes = []
+		current_layout = self.info_frame.layout()
+		for header in reversed(list(header_titles)):
+			#buttonBlue = QPushButton('Blue', self)
+			#buttonBlue.clicked.connect(self.on_click)
+			line_edit = QLineEdit( parent=self )
+			#line_edit.returnPressed.connect()
+			group = QFrame()
+			#group.setFrameRect( QtCore.QRect(0,0,0,0) )
+			#group.setMargin(0)
+			vertical_group = QVBoxLayout()
+			vertical_group.addWidget( QLabel( header, parent=self ) )
+			vertical_group.addWidget( line_edit )
+			vertical_group.setContentsMargins(0,0,0,0)
+			self.info_boxes.append( (header, line_edit) )
+			group.setLayout( vertical_group )
+			current_layout.insertWidget( 0, group )
+
+		self.info_boxes.reverse()
+
+	def Tree_Columns_Order_Changed( self, logicalIndex, oldVisualIndex, newVisualIndex ):
+		new_headers = [None for x in self.header_titles]
+		for i in range( len( self.header_titles ) ):
+			shown_index = self.treeWidget.header().visualIndex( i )
+			new_headers[ shown_index ] = self.treeWidget.model().headerData( i, QtCore.Qt.Horizontal )
+
+		self.Reinitialize_Tree_Table( new_headers, self.row_data )
 
 	def Initialize_Tree_Table(self):
-		self.Reinitialize_Tree_Table()
+		#what_to_collect = [, , , , , , ,  ]
+		self.header_titles = {"Sample Name" : "sample_name", "Process" : "processing_step", "Process Sequence" : "processing_step_part",
+				  "Attempt" : "processing_step_attempt", "Location" : "image_location", "Time" : "time",
+				  "Microscope" : "microscope_location", "File Location" : "path_to_file"}
+		self.row_data = self.Get_SQL_Data_For_Tree_Table()
+		self.Reinitialize_Tree_Table( self.header_titles.keys(), self.row_data )
+
+		self.treeWidget.setHeaderLabels( self.header_titles.keys() )
+		self.treeWidget.hideColumn(len(self.header_titles.keys()) - 1)
 
 		## setup policy and connect slot for context menu popup:
 		#self.treeWidget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu);
 		#self.treeWidget.customContextMenuRequested.connect(self.treeContextMenuRequest);
 
-	def Reinitialize_Tree_Table(self):
+	def Get_SQL_Data_For_Tree_Table( self ):
+		user = self.user_lineEdit.text()
+
+		what_to_collect = self.header_titles.values()
+		query = self.sql_connection.cursor()
+		query_string = 'SELECT {} FROM processing_images WHERE user="{}"'.format( ','.join(what_to_collect), user )
+		try:
+			test = query.execute(query_string)
+			selected_rows = query.fetchall()
+			return selected_rows
+		except mysql.connector.Error as e:
+			print("Error pulling data from ftir_measurments:%d:%s" % (e.args[0], e.args[1]))
+			return []
+
+	def Reinitialize_Tree_Table( self, header_titles, row_data ):
 		self.treeWidget.clear()
 		self.treeWidget.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
 
-		user = self.user_lineEdit.text()
-		header_titles = ["Sample Name", "Process", "Process Sequence", "Attempt", "Location", "Time", "Microscope", "File Location"]
-		self.treeWidget.setHeaderLabels(header_titles)
-		self.treeWidget.hideColumn(len(header_titles) - 1)
-		what_to_collect = ["sample_name", "processing_step", "processing_step_part", "processing_step_attempt", "image_location", "time", "microscope_location", "path_to_file" ]
+		what_to_collect = [self.header_titles[x] for x in header_titles]
+		self.Recursive_Tree_Table_Build( what_to_collect, self.treeWidget.invisibleRootItem(), 0, row_data )
+		#self.treeWidget.header().resizeSections( QtWidgets.QHeaderView.ResizeToContents )
 
-		query = self.sql_connection.cursor()
-		querey_string = 'SELECT {} FROM processing_images WHERE user="{}"'.format( ','.join(what_to_collect), user )
-		try:
-			test = query.execute(querey_string)
-			selected_rows = query.fetchall()
-		except mysql.connector.Error as e:
-			print("Error pulling data from ftir_measurments:%d:%s" % (e.args[0], e.args[1]))
-			return
-
-		self.Recursive_Tree_Table_Build( what_to_collect, self.treeWidget.invisibleRootItem(), 0, selected_rows )
-		for i in range(len(header_titles)):
-			self.treeWidget.resizeColumnToContents(i)
+		#for i in range(len(header_titles)):
+		#	self.treeWidget.header().setSectionResizeMode(i, QtWidgets.QHeaderView.ResizeToContents)
+			#self.treeWidget.resizeColumnToContents(i)
 
 
-	def Recursive_Tree_Table_Build(self, what_to_collect, parent_tree, current_collectable_i, selected_rows):
+	def Recursive_Tree_Table_Build(self, what_to_collect, parent_tree, current_collectable_i, row_data):
 		if (current_collectable_i == len(what_to_collect)):
 			return
 
-		unique_elements = sorted( set( x[current_collectable_i] for x in selected_rows ) )
+		shown_index = list( self.header_titles.values() ).index( what_to_collect[ current_collectable_i ] )
+
+		unique_elements = sorted( set( x[shown_index] for x in row_data if x[shown_index] is not None ) )
+		if None in [x[shown_index] for x in row_data]:
+			unique_elements.append( "Null" )
 
 		numberOfRows = len(unique_elements)
 
@@ -176,12 +238,15 @@ class IV_Measurement_Assistant_App(QWidget, Ui_MainWindow):
 				minutes, seconds = divmod(remainder, 60)
 				current_value = '%02d:%02d:%02d' % (hours, minutes, seconds)
 
-			filtered_rows = [ x for x in selected_rows if x[current_collectable_i] == unique_element ]
+			if unique_element == "Null":
+				filtered_rows = [ x for x in row_data if x[shown_index] == None ]
+			else:
+				filtered_rows = [ x for x in row_data if x[shown_index] == unique_element ]
 			new_tree_branch = parent_tree;  # Only add a new breakout for the first one, and if more than 1 child
 			if numberOfRows > 1 or current_collectable_i == 0:
 				new_tree_branch = QtWidgets.QTreeWidgetItem(parent_tree)
 
-			new_tree_branch.setText(current_collectable_i, str(current_value));
+			new_tree_branch.setText(shown_index, str(current_value));
 			self.Recursive_Tree_Table_Build(what_to_collect, new_tree_branch, current_collectable_i + 1, filtered_rows)
 
 
@@ -201,6 +266,7 @@ class IV_Measurement_Assistant_App(QWidget, Ui_MainWindow):
 
 if __name__ == "__main__":
 	app = QtWidgets.QApplication(sys.argv)
-	window = IV_Measurement_Assistant_App()
+	window = Processing_Image_Organizer_GUI()
 	window.show()
-	sys.exit(app.exec_())
+	#sys.exit(app.exec_())
+	app.exec_()

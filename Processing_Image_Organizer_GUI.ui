@@ -10,12 +10,21 @@
     <height>637</height>
    </rect>
   </property>
+  <property name="minimumSize">
+   <size>
+    <width>200</width>
+    <height>200</height>
+   </size>
+  </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">
-    <widget class="QSplitter" name="splitter">
+    <widget class="QSplitter" name="splitter_2">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
@@ -26,17 +35,32 @@
       <property name="frameShadow">
        <enum>QFrame::Raised</enum>
       </property>
-      <layout class="QGridLayout" name="gridLayout_2">
+      <layout class="QGridLayout" name="gridLayout">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
        <item row="0" column="0">
-        <widget class="QSplitter" name="splitter_2">
+        <widget class="QSplitter" name="splitter">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
-         <widget class="QWidget" name="">
-          <layout class="QVBoxLayout" name="selector_verticalLayout">
-           <property name="sizeConstraint">
-            <enum>QLayout::SetFixedSize</enum>
-           </property>
+         <widget class="QFrame" name="frame_2">
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Raised</enum>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout">
            <item>
             <widget class="QToolButton" name="refreshConnection_toolButton">
              <property name="sizePolicy">
@@ -95,6 +119,18 @@
            </item>
            <item>
             <widget class="QTreeWidget" name="treeWidget">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="baseSize">
+              <size>
+               <width>160</width>
+               <height>0</height>
+              </size>
+             </property>
              <column>
               <property name="text">
                <string>Waiting For SQL Connection</string>
@@ -117,18 +153,80 @@
            </item>
           </layout>
          </widget>
-         <widget class="Image_Viewer" name="graphicsView"/>
+         <widget class="Image_Viewer" name="graphicsView">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>2</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.5, fx:0.5, fy:0.5, stop:0 rgba(255, 255, 255, 255), stop:0.579755 rgba(0, 0, 0, 255));</string>
+          </property>
+         </widget>
         </widget>
        </item>
       </layout>
      </widget>
-     <widget class="QFrame" name="frame_2">
+     <widget class="QFrame" name="info_frame">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>48</height>
+       </size>
+      </property>
       <property name="frameShape">
        <enum>QFrame::StyledPanel</enum>
       </property>
       <property name="frameShadow">
        <enum>QFrame::Raised</enum>
       </property>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="updateData_pushButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Update Data</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </widget>
    </item>
@@ -138,7 +236,7 @@
   <customwidget>
    <class>Image_Viewer</class>
    <extends>QGraphicsView</extends>
-   <header>Image_Viewer.h</header>
+   <header>Processing_Image_Organizer.Image_Viewer.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

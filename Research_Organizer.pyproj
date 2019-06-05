@@ -26,6 +26,9 @@
     </Compile>
     <Compile Include="Image_Viewer.py" />
     <Compile Include="Processing_Image_Organizer.py" />
+    <Compile Include="Tree_Table_Compressed.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Processing_Image_Organizer_GUI.ui" />

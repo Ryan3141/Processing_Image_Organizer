@@ -24,6 +24,7 @@ class File_Loader( QtCore.QObject ):
 		super().__init__( parent )
 
 		self.configuration_file_path = configuration_file_path
+		self.stored_images = {}
 
 	def run(self):
 		self.Connect()
@@ -56,7 +57,7 @@ class File_Loader( QtCore.QObject ):
 		self.ftps.set_pasv(True)
 		self.ftps.prot_p()
 
-	def GetImageFile( self, directory, file_name ):
+	def GetImageFile( self, directory, file_name, should_emit_when_loaded ):
 		#test = ftps.pwd()
 		#test = ftps.dir()
 		#print( str(test) )
@@ -70,8 +71,21 @@ class File_Loader( QtCore.QObject ):
 				self.ftps.retrbinary( 'RETR {}'.format( str(file_name) ),
 							   open(local_file_location, 'wb').write )
 			except Exception as e:
-				print( "Error cannot find file: " + local_file_location)
-		image_from_file = imread(local_file_location)
+				try: # Connection still working, file must just not exist on server
+					self.ftps.pwd()
+					print( "Error cannot find file: " + local_file_location)
+				except: # Connection likely timed out, try again and repeat previous command
+					self.Connect()
+					self.ftps.cwd( str(directory) )
+					self.ftps.retrbinary( 'RETR {}'.format( str(file_name) ),
+							   open(local_file_location, 'wb').write )
+
+		if local_file_location in self.stored_images.keys():
+			image_from_file = self.stored_images[ local_file_location ]
+		else:
+			image_from_file = imread( local_file_location )
+			self.stored_images[ local_file_location ] = image_from_file
+
 		if image_from_file is not None:
 			self.imageReady_signal.emit( image_from_file )
 		else:
